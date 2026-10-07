@@ -1,50 +1,28 @@
 """
-    python train.py
-    python train.py --steps 2000000 --seed 1 --out runs/sac_seed1
+    python train.py                                   # default project (double_pendulum)
+    python train.py --project double_pendulum --steps 2000000 --seed 1
     python train.py --n-envs 4
 """
 import argparse
 from datetime import datetime
 from pathlib import Path
 
-import gymnasium as gym
 import torch
-from gymnasium.wrappers import TimeLimit
 from stable_baselines3 import SAC
 from stable_baselines3.common.callbacks import CallbackList, CheckpointCallback, EvalCallback
-from stable_baselines3.common.monitor import Monitor
-from stable_baselines3.common.vec_env import SubprocVecEnv
 
-from env import MAX_EPISODE_STEPS, PendubotEnv
-
-
-class HangingStart(gym.Wrapper):
-    def reset(self, **kwargs):
-        options = dict(kwargs.pop("options", None) or {})
-        options["hanging"] = True
-        return self.env.reset(options=options, **kwargs)
-
-
-def make_env(hanging_only=False):
-    env = PendubotEnv()
-    if hanging_only:
-        env = HangingStart(env)
-    env = TimeLimit(env, max_episode_steps=MAX_EPISODE_STEPS)
-    return Monitor(env)
-
-
-def make_train_env(n_envs):
-    if n_envs == 1:
-        return make_env()
-    return SubprocVecEnv([make_env for _ in range(n_envs)])
+from core.envs import make_env, make_train_env
+from projects import DEFAULT_PROJECT, PROJECTS, get_project
 
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument("--project", default=DEFAULT_PROJECT, choices=sorted(PROJECTS))
     parser.add_argument("--steps", type=int, default=500_000, help="total env steps")
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--out", type=Path, default=None, help="default: runs/sac_<date>_<time>_s<seed>")
+    parser.add_argument("--out", type=Path, default=None, help="default: runs/<project>/sac_<date>_<time>_s<seed>")
     parser.add_argument("--lr", type=float, default=1e-4)
+    parser.add_argument("--gamma", type=float, default=0.99)
     parser.add_argument("--n-envs", type=int, default=1, help="parallel environments")
     parser.add_argument(
         "--gradient-steps",
@@ -57,20 +35,21 @@ def main():
     parser.add_argument("--learning-starts", type=int, default=10_000)
     args = parser.parse_args()
 
+    project = get_project(args.project)
     if args.out is None:
-        args.out = Path("runs") / f"sac_{datetime.now():%Y%m%d_%H%M%S}_s{args.seed}"
+        args.out = Path("runs") / project.name / f"sac_{datetime.now():%Y%m%d_%H%M%S}_s{args.seed}"
     args.out.mkdir(parents=True, exist_ok=True)
-    print(f"run directory: {args.out}")
+    print(f"project: {project.name} | run directory: {args.out}")
 
     torch.set_num_threads(args.threads)
 
-    train_env = make_train_env(args.n_envs)
-    eval_env = make_env(hanging_only=True)
+    train_env = make_train_env(project, args.n_envs)
+    eval_env = make_env(project, evaluation=True)
 
     model = SAC(
         "MlpPolicy",
         train_env,
-        gamma=0.99,
+        gamma=args.gamma,
         learning_rate=args.lr,
         batch_size=256,
         learning_starts=args.learning_starts,

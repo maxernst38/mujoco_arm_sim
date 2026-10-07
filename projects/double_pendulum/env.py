@@ -10,10 +10,10 @@ import mujoco
 import numpy as np
 from gymnasium import spaces
 
-MODEL_PATH = Path(__file__).parent / "models" / "double_pendulum.xml"
+MODEL_PATH = Path(__file__).parent / "double_pendulum.xml"
 
 FRAME_SKIP = 10           # 50 Hz control at dt = 0.002
-MAX_EPISODE_STEPS = 1000  # 20 s, applied by TimeLimit in train.make_env
+MAX_EPISODE_STEPS = 1000  # 20 s, applied by TimeLimit in core.envs.make_env
 
 UPRIGHT_START_PROB = 0.4
 UPRIGHT_POS_NOISE = 0.2
@@ -68,6 +68,7 @@ class PendubotEnv(gym.Env):
         super().__init__()
         self.model = mujoco.MjModel.from_xml_path(str(MODEL_PATH))
         self.data = mujoco.MjData(self.model)
+        self.dt = FRAME_SKIP * self.model.opt.timestep
         self.torque_scale = self.model.actuator_ctrlrange
         self.action_space = spaces.Box(-1, 1, shape=(1,), dtype=np.float32)
         self.observation_space = spaces.Box(-np.inf, np.inf, shape=(6,), dtype=np.float32)

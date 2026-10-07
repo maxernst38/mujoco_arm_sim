@@ -1,8 +1,16 @@
 #!/usr/bin/env bash
-# logs go to runs/vec10_10M_s<seed>.log; stop with: pkill -f "train.py --n-envs 10"
+# usage: ./run.sh [project] [steps] [n_envs] [n_seeds]
+# logs go to runs/<project>/vec<n_envs>_s<seed>.log; stop with: pkill -f "train.py --project"
 
-cd /home/maxer/mujoco_arm_sim
-for s in 0 1 2 3; do
-  nohup python train.py --n-envs 10 --steps 10000000 --seed $s --eval-freq 100000 \
-    --out runs/vec10_10M_s$s > runs/vec10_10M_s$s.log 2>&1 &
+PROJECT=${1:-double_pendulum}
+STEPS=${2:-10000000}
+N_ENVS=${3:-10}
+N_SEEDS=${4:-4}
+
+cd "$(dirname "$0")"
+mkdir -p "runs/$PROJECT"
+for ((s = 0; s < N_SEEDS; s++)); do
+  out="runs/$PROJECT/vec${N_ENVS}_s$s"
+  nohup python train.py --project "$PROJECT" --n-envs "$N_ENVS" --steps "$STEPS" --seed "$s" \
+    --eval-freq 100000 --out "$out" > "$out.log" 2>&1 &
 done
