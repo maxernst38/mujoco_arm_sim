@@ -1,0 +1,49 @@
+<mujoco model="double_pendulum">
+
+  <compiler angle="degree" autolimits="true"/>
+
+  <option timestep="0.002" gravity="0 0 -9.81" integrator="implicitfast"/>
+
+  <default>
+    <joint type="hinge" damping="0.02" armature="0.01"/>
+    <geom density="1000" rgba="0.7 0.7 0.75 1"/>
+
+    <default class="link">
+      <geom type="capsule" size="0.03" rgba="0.9 0.5 0.2 1"/>
+    </default>
+
+    <!-- keep TORQUE_LIMIT in env.py in sync with this -->
+    <default class="motor">
+      <motor ctrlrange="-4 4" ctrllimited="true"/>
+    </default>
+  </default>
+
+  <worldbody>
+    <light pos="0 0 1" dir="0 0 -1"/>
+    <geom name="floor" type="plane" size="1 1 0.05" rgba="0.3 0.3 0.35 1"/>
+
+    <!-- pivot height and link lengths are mirrored in env.py -->
+    <body pos="0 0 1">
+      <joint name="base" type="hinge" axis="0 1 0"/>
+      <geom class="link" fromto="0 0 0 0 0 -0.4"/>
+      <body pos="0 0 -0.4">
+        <joint name="pivot" type="hinge" axis="0 1 0"/>
+        <geom class="link" fromto="0 0 0 0 0 -0.4"/>
+        <site name="tip" pos="0 0 -0.4" size="0.03" rgba="0 1 0 1"/>
+      </body>
+    </body>
+  </worldbody>
+
+  <actuator>
+    <motor name="control_servo" class="motor" joint="base"/>
+  </actuator>
+
+  <sensor>
+    <jointpos name="base_angle" joint="base"/>
+    <jointpos name="pivot_angle" joint="pivot"/>
+    <jointvel name="base_velocity" joint="base"/>
+    <jointvel name="pivot_velocity" joint="pivot"/>
+    <framepos name="tip_position" objtype="site" objname="tip"/>
+  </sensor>
+
+</mujoco>
